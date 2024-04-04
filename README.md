@@ -1,15 +1,12 @@
 # Thanks!
 
-> 
+>
 
 Automatically star the Obsidian plugins _and themes_ that you use.
-
 
 ## Thank you
 
 A love letter to [thanks.nvim](https://github.com/jsongerber/thanks.nvim).
-
-
 
 ---
 

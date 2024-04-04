@@ -1,31 +1,8 @@
-import { Plugin, request } from 'obsidian-typings';
-import { type MyPluginSettings, DEFAULT_SETTINGS } from './settings/Settings';
+import { Plugin, request } from 'obsidian';
+import { type MyPluginSettings as ThanksPluginSettings, DEFAULT_SETTINGS } from './settings/Settings';
 import { SampleSettingTab } from './settings/SettingTab';
-
-// Plugins:
-// https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json
-
-export interface RawPluginData {
-	id: string;
-	name: string;
-	author: string;
-	description: string;
-	repo: string;
-}
-
-export interface PluginData {
-	name: string;
-	id: string;
-	repo: string;
-}
-
-// CSS Themes:
-// https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-css-themes.json
-
-export interface ThemeData {
-	name: string;
-	repo: string;
-}
+import { PluginData, ThemeData, RawPluginData, RawThemeData } from './types';
+import { AuthModal } from './modal';
 
 // REST API Github
 // list starred repos
@@ -33,7 +10,7 @@ export interface ThemeData {
 
 export default class ThanksPlugin extends Plugin {
 	// @ts-ignore defined in on load;
-	settings: MyPluginSettings;
+	settings: ThanksPluginSettings;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -44,7 +21,35 @@ export default class ThanksPlugin extends Plugin {
 			id: 'open-thanks-settings',
 			name: 'Open Thanks Settings',
 			callback: () => {
-				this.openSettings();
+				// this.openSettings();
+			},
+		});
+
+		this.addCommand({
+			id: 'test-plugin',
+			name: 'Test Plugin',
+			callback: () => {
+				this.getPluginData().then(data => {
+					console.log(data);
+				});
+			},
+		});
+
+		this.addCommand({
+			id: 'test-theme',
+			name: 'Test Theme',
+			callback: () => {
+				this.getThemeData().then(data => {
+					console.log(data);
+				});
+			},
+		});
+
+		this.addCommand({
+			id: 'test-api',
+			name: 'Test API',
+			callback: () => {
+				new AuthModal(this).open();
 			},
 		});
 	}
@@ -52,7 +57,7 @@ export default class ThanksPlugin extends Plugin {
 	onunload(): void {}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as MyPluginSettings;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as ThanksPluginSettings;
 	}
 
 	async saveSettings(): Promise<void> {
@@ -60,27 +65,55 @@ export default class ThanksPlugin extends Plugin {
 	}
 
 	async getPluginData(): Promise<PluginData[]> {
-		const url = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json";
+		const url = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json';
 		const result = await request(url);
 		const rawJSON = JSON.parse(result) as RawPluginData[];
-		
-		const IDs = this.getPluginIDs()
+
+		const IDs = this.getPluginIDs();
 		const pluginData: PluginData[] = rawJSON
-			.filter((pluginObject) => IDs.contains(pluginObject.id))
-			.map((pluginObject) => {
+			.filter(pluginObject => IDs.contains(pluginObject.id))
+			.map(pluginObject => {
 				return {
 					name: pluginObject.name,
 					id: pluginObject.id,
-					repo: pluginObject.repo
+					repo: pluginObject.repo,
 				} satisfies PluginData;
-			})
+			});
 		return pluginData;
+	}
+
+	async getThemeData(): Promise<ThemeData[]> {
+		const url = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-css-themes.json';
+		const result = await request(url);
+		const rawJSON = JSON.parse(result) as RawThemeData[];
+
+		const names = this.getThemeNames();
+		const themeData: ThemeData[] = rawJSON
+			.filter(themeObject => names.contains(themeObject.name))
+			.map(themeObject => {
+				return {
+					name: themeObject.name,
+					repo: themeObject.repo,
+				} satisfies ThemeData;
+			});
+		return themeData;
 	}
 
 	/**
 	 * Grabs the IDs of all downloaded plugins through their manifests.
 	 */
 	getPluginIDs(): string[] {
+		// eslint-disable-next-line
+		// @ts-ignore
 		return Object.keys(this.app.plugins.manifests);
+	}
+
+	/**
+	 * Grabs the names of all downloaded themes.
+	 */
+	getThemeNames(): string[] {
+		// eslint-disable-next-line
+		// @ts-ignore
+		return Object.keys(this.app.customCss.themes);
 	}
 }
