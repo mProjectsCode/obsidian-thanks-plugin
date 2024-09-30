@@ -120,60 +120,84 @@ export class AuthModal extends Modal {
 		return result;
 	}
 
-	// TODO: implement this method.
-	// See: https://docs.github.com/en/rest/activity/starring?apiVersion=2022-11-28#list-repositories-starred-by-the-authenticated-user
-	// Map<repo, RepoData>
+	/**
+     * Gets all starred repositories on github for a particular user using the token.
+	 * See: https://docs.github.com/en/rest/activity/starring?apiVersion=2022-11-28#list-repositories-starred-by-the-authenticated-user
+	 *
+	 **/
 	async getStarredRepositories(): Promise<Map<string, RepoData>> {
 		if (!this.token) {
 			// not authenticated, do nothing
 			throw new Error('Not authenticated');
 		}
+
 		// Assume we have a token.
-		let lastPage = 1;
-		const response = await requestUrl({
-			url: `https://api.github.com/user/starred?per_page=100?page=${lastPage}`,
+		let page = 1;
+		let req = {
+			url: `https://api.github.com/user/starred?per_page=10&page=${page}`,
 			method: 'GET',
 			headers: {
-				Accept: 'application/vnd.github+json',
-				Authentication: `Bearer ${this.token}`,
+				'Accept': 'application/vnd.github+json',
+				'Authorization': `Bearer ${this.token}`,
 				'X-GitHub-Api-Version': '2022-11-28',
 			},
 			throw: false,
-		});
+		};
 
-		console.log(response.headers);
+		const response = await requestUrl(req);
 
-		// TODO: response.headers will contain a link header with rel="next" attached to it, as well as rel="last"
-		// TODO: set pageNumber to last
-
-		let promisePool = [];
-		for (let i = 2; i < lastPage; i++) {
-			let req = requestUrl({
-				url: `https://api.github.com/user/starred?per_page=100?page=${i}`,
-				method: 'GET',
-				headers: {
-					Accept: 'application/vnd.github+json',
-					Authentication: `Bearer ${this.token}`,
-					'X-GitHub-Api-Version': '2022-11-28',
-				},
-				throw: false,
-			});
-			promisePool.push(req);
+		// Attempt to extract the lastPage if this request is paginated
+		let lastPage = undefined;
+		if (response.headers.link) {
+			// link: "<https://api.github.com/user/starred?per_page=10&page=2>; rel="next", <https://api.github.com/user/starred?per_page=10&page=6>; rel="last"
+			if (response.headers.link.contains("last")) {
+				const links = response.headers.link.split(",")
+				for (const line of links) {
+					let items = line.split(";");
+					let lnk = items[0];
+					let rel = items[1];
+					if (rel.contains("last")) {
+						lastPage = Number(lnk.charAt(lnk.length-2));
+					}
+				}
+			}
 		}
 
-		// let responses = [response, ...await Promise.all(promisePool)].flat();
-		// let responseJSON = responses.map(r => r.json);
+		let responsesJSON = response.json;
+		// If the request is paginated, do more requests and collect all JSON responses into responsesJSON
+		if (lastPage) {
+		    let promisePool = [];
+		    for (let i = 2; i <= lastPage; i++) {
+		    	let req = requestUrl({
+		    		url: `https://api.github.com/user/starred?per_page=10&page=${i}`,
+		    		method: 'GET',
+		    		headers: {
+						'Accept': 'application/vnd.github+json',
+						'Authorization': `Bearer ${this.token}`,
+						'X-GitHub-Api-Version': '2022-11-28',
+		    		},
+		    		throw: false,
+		    	});
+		    	promisePool.push(req);
+		    }
+			let responses = [response, ...await Promise.all(promisePool)];
+			responsesJSON = responses.map(r => r.json).flat();
+		}
 
+
+
+		// note: responsesJSON contains JSON for all responses (either a single request, or pagination)
 		let starred_repos: Map<string, RepoData> = new Map();
-		// for (const obj in responses) {
-		//     const starredResult = {
-		// 		name: "unused",
-		//         repo: obj.full_name,
-		//         star_count: obj.stargazers_count,
-		//         is_starred: true
-		//     } satisfies RepoData
-		//     starred_repos.set(starredResult.repo, starredResult);
-		// }
+		for (const obj of responsesJSON) {
+			// TODO: Figure out a good type here; do we want name?
+		    const starredResult = {
+				name: "unused",
+		        repo: obj.full_name,
+		        star_count: obj.stargazers_count,
+		        is_starred: true
+		    } satisfies RepoData
+		    starred_repos.set(starredResult.repo, starredResult);
+		}
 
 		return starred_repos;
 	}
