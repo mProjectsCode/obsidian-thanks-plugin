@@ -55,14 +55,52 @@ export class AuthModal extends Modal {
 		const code = this.contentEl.createEl('code', { text: `${device.user_code}`, title: "Click to copy." });
 		// For styling purposes, add a class to this item. In CSS we set a pointer cursor to indicate this is clickable.
 		code.addClass("user-device-code");
-		code.onClickEvent(async () => {
-			// TODO: does this even work on mobile?
-			navigator.clipboard.writeText(`${device.user_code}`);
-		});
+		code.onClickEvent(async () => navigator.clipboard.writeText(`${device.user_code}`));
+
+		// Be explicit about the click/touch to copy for the code.
+		this.contentEl.createEl('span', { text:" (click code to copy)." });
 
 		this.contentEl.createEl('p', { text: `Waiting for auth response...` });
 	}
 
+
+	/**
+	 * NOTE: untested, probably inaccurate.
+	 *
+	 * Star a repository for the authenticated user.
+	 *
+	 * @param repo A repository in the form `user/repository`.
+	 */
+	async starRepo(repo: RepoData): Promise<boolean> {
+		console.log('Attempting to star', repo.repo);
+
+		const OWNER = repo.repo.split('/')[0];
+		const REPO = repo.repo.split('/')[1];
+
+		// Try to get the number by doing a request
+		const req = {
+			url: `https://api.github.com/user/starred/${OWNER}/${REPO}`,
+			method: 'POST',
+			headers: {
+				'Accept': 'application/vnd.github+json',
+				'Authorization': `Bearer ${this.token}`,
+				'X-GitHub-Api-Version': '2022-11-28',
+			},
+    		throw: false
+		};
+
+		const response = await requestUrl(req);
+
+		// This POST is successful if status = 204 (no content) or 304 (not modified)
+		return response.status == 204 || response.status == 304
+	}
+
+	/**
+	 * Display repositories and their starred status.
+	 * Shows a button for users to click to start a repository.
+	 *
+	 * See https://docs.github.com/en/rest/activity/starring?apiVersion=2022-11-28#star-a-repository-for-the-authenticated-user for API documentation on starring a repository as authenticated user.
+	 */
 	async displayStarContent(): Promise<void> {
 		const repoData = await this.getRepoData();
 
@@ -73,20 +111,29 @@ export class AuthModal extends Modal {
 			const setting = new Setting(this.contentEl);
 			setting.setName(repo.name);
 			setting.setDesc(`Join ${repo.star_count} others in starring this repo!`);
+			setting.nameEl.addClass("content-repo-name"); // NOTE: in case we want styling, remove if not needed
+			setting.descEl.addClass("content-repo-desc"); // NOTE: in case we want styling, remove if not needed
 			if (!repo.is_starred) {
 				setting.addButton(button => {
 					button.setButtonText('Star');
 					button.setCta();
 					button.onClick(async () => {
-						// TODO: star the repo
-						console.log('Star', repo.repo);
+						const ok = await this.starRepo(repo);
+						// TODO: update repo count if OK?
+						if (!ok) {
+							// TODO: Let the user know something went wrong?
+						}
 					});
+					button.buttonEl.addClass("content-star-button"); // NOTE: in case we want styling, remove if not needed
+					button.buttonEl.addClass("repo-not-starred");    // NOTE: in case we want styling, remove if not needed
 				});
 			} else {
 				setting.addButton(button => {
 					button.setButtonText('Star');
 					button.setDisabled(true);
 					button.setTooltip('Already starred');
+					button.buttonEl.addClass("content-star-button");  // NOTE: in case we want styling, remove if not needed
+					button.buttonEl.addClass("repo-already-starred"); // NOTE: in case we want styling, remove if not needed
 				});
 			}
 		}
@@ -98,7 +145,32 @@ export class AuthModal extends Modal {
 	 * @param repo A repository in the form `user/repository`.
 	 */
 	async getStarCount(repo: string): Promise<number> {
-		return -1;
+		// Try to get the number by doing a request
+		const req = {
+			url: `https://api.github.com/repos/${repo}`,
+			method: 'GET',
+			headers: {
+				'Accept': 'application/vnd.github+json',
+				// 'Authorization': `Bearer ${this.token}`,
+				'X-GitHub-Api-Version': '2022-11-28',
+			},
+    		throw: false
+		};
+
+		const response = await requestUrl(req);
+
+		// Handle errors by returning 0 for the count
+		if (response.status != 200) {
+			console.log(`Something went wrong retrieving #stars for repo '${repo}'; returning 0.`);
+			return 0;
+		}
+
+		// We have status 200, so we should get proper json.
+		// If not, still set count to 0.
+		const json = response.json satisfies GithubRepo;
+        const stargazers = json.stargazers_count ?? 0;
+
+		return stargazers;
 	}
 
 	/**

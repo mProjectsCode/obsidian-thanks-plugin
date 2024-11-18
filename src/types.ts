@@ -109,6 +109,13 @@ export interface Token {
 	token_type: string;
 }
 
+// A stub for GitHub API's response to getting a respository
+// We only really need the number of stars
+// TODO: A lemon check on if this is the correct way to go in typescript would be appreciated.
+export interface GithubRepo {
+	stargazers_count: number;
+}
+
 export interface PluginRepoData {
 	id: string;
 	name: string;
