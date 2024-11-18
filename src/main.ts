@@ -4,10 +4,6 @@ import { SampleSettingTab } from './settings/SettingTab';
 import { PluginData, ThemeData, RawPluginData, RawThemeData } from './types';
 import { AuthModal } from './modal';
 
-// REST API Github
-// list starred repos
-// https://docs.github.com/en/rest/activity/starring?apiVersion=2022-11-28#list-repositories-starred-by-the-authenticated-user
-
 export default class ThanksPlugin extends Plugin {
 	// @ts-ignore defined in on load;
 	settings: ThanksPluginSettings;

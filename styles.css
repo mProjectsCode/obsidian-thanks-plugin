@@ -9,6 +9,7 @@ If your plugin does not need CSS, delete this file.
 
 /* TODO: remove this so we use obsidian's built-in styling instead */
 code.user-device-code {
+    cursor: pointer;
     color: var(--code-normal);
     font-family: var(--font-monospace);
     background-color: var(--code-background);

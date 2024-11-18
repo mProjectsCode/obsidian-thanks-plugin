@@ -1,5 +1,6 @@
-import { Notice, RequestUrlParam, requestUrl } from 'obsidian';
+import { RequestUrlParam, requestUrl } from 'obsidian';
 
+// TODO: Actually cache results in a correct way.
 const cache: Record<string, string> = {};
 
 export type Params = any;

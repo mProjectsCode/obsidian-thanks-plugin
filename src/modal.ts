@@ -1,6 +1,6 @@
-import { arrayBufferToBase64, ButtonComponent, Modal, requestUrl, RequestUrlParam, Setting, setTooltip } from 'obsidian';
+import { ButtonComponent, Modal, requestUrl,Setting } from 'obsidian';
 import ThanksPlugin from './main';
-import { Device, AuthReply, Token, RepoData, PluginRepoData, ThemeRepoData } from './types';
+import { Device, AuthReply, Token, RepoData, PluginRepoData, ThemeRepoData, GithubRepo } from './types';
 import { post, api_options } from './authenticate';
 
 export class AuthModal extends Modal {
@@ -25,6 +25,7 @@ export class AuthModal extends Modal {
 		this.contentEl.empty();
 		this.contentEl.createEl('h2', { text: 'Please sign in with GitHub' });
 
+		// Create a button that asks the user to sign in with github.
 		const button = new ButtonComponent(this.contentEl);
 
 		button.setButtonText('Sign in with GitHub');
@@ -35,22 +36,24 @@ export class AuthModal extends Modal {
 		});
 	}
 
+	/**
+	 * Show the verification URL and device code that the user must use when authenticating.
+	 *
+	 * @param device typed github API response containing a verification url and user code.
+	 */
 	displayAuthWaitContent(device: Device): void {
 		this.contentEl.empty();
 		this.contentEl.createEl('h2',   { text: 'Please sign in with GitHub' });
 
-		// OLD:
-        // this.contentEl.createEl('p', { text: `Go to ${device.verification_uri} and enter code ${device.user_code}` });
-
-		// NOTE: manually create each individual element so we can click links and click to copy.
+		// Manually create each individual element so we can click links and click to copy.
 		this.contentEl.createEl('span', { text: "Go to " });
-		// TODO: the `title` does not show as nice Obsidian-tooltip...
+		// TODO: Make this element have a nicer tooltip. Does that mean we need a `setting`?
 		this.contentEl.createEl('a',    { text: `${device.verification_uri}`, href: `${device.verification_uri}`, title: "Click to sign in with GitHub." });
 		this.contentEl.createEl('span', { text: " and enter code " });
 
-		// TODO: probably this is very bad style, but it _does_ work...
-		// TODO: the `title` does not show as nice Obsidian-tooltip...
+		// TODO: Make this element have a nicer tooltip. Does that mean we need a `setting`?
 		const code = this.contentEl.createEl('code', { text: `${device.user_code}`, title: "Click to copy." });
+		// For styling purposes, add a class to this item. In CSS we set a pointer cursor to indicate this is clickable.
 		code.addClass("user-device-code");
 		code.onClickEvent(async () => {
 			// TODO: does this even work on mobile?
@@ -66,9 +69,7 @@ export class AuthModal extends Modal {
 		this.contentEl.empty();
 		this.contentEl.createEl('h2', { text: 'Thank you, plugins & themes!' });
 
-		// TODO: show them in the modal in a nice way
 		for (const repo of repoData) {
-			// this.contentEl.createEl('p', { text: `${repo.name} - ${repo.is_starred}` });
 			const setting = new Setting(this.contentEl);
 			setting.setName(repo.name);
 			setting.setDesc(`Join ${repo.star_count} others in starring this repo!`);
@@ -91,6 +92,11 @@ export class AuthModal extends Modal {
 		}
 	}
 
+	/**
+	 * Retrieves the number of stargazers for a particular repository.
+	 *
+	 * @param repo A repository in the form `user/repository`.
+	 */
 	async getStarCount(repo: string): Promise<number> {
 		return -1;
 	}
