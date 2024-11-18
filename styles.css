@@ -6,3 +6,14 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* TODO: remove this so we use obsidian's built-in styling instead */
+code.user-device-code {
+    color: var(--code-normal);
+    font-family: var(--font-monospace);
+    background-color: var(--code-background);
+    border-radius: var(--code-radius);
+    font-size: var(--code-size);
+    padding: 0.1em 0.25em;
+    -webkit-box-decoration-break: clone;
+}

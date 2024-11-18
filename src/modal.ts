@@ -1,4 +1,4 @@
-import { arrayBufferToBase64, ButtonComponent, Modal, requestUrl, RequestUrlParam, Setting } from 'obsidian';
+import { arrayBufferToBase64, ButtonComponent, Modal, requestUrl, RequestUrlParam, Setting, setTooltip } from 'obsidian';
 import ThanksPlugin from './main';
 import { Device, AuthReply, Token, RepoData, PluginRepoData, ThemeRepoData } from './types';
 import { post, api_options } from './authenticate';
@@ -37,9 +37,25 @@ export class AuthModal extends Modal {
 
 	displayAuthWaitContent(device: Device): void {
 		this.contentEl.empty();
-		this.contentEl.createEl('h2', { text: 'Please sign in with GitHub' });
-		// TODO: Make it so you can easily copy paste the link and code
-		this.contentEl.createEl('p', { text: `Go to ${device.verification_uri} and enter code ${device.user_code}` });
+		this.contentEl.createEl('h2',   { text: 'Please sign in with GitHub' });
+
+		// OLD:
+        // this.contentEl.createEl('p', { text: `Go to ${device.verification_uri} and enter code ${device.user_code}` });
+
+		// NOTE: manually create each individual element so we can click links and click to copy.
+		this.contentEl.createEl('span', { text: "Go to " });
+		// TODO: the `title` does not show as nice Obsidian-tooltip...
+		this.contentEl.createEl('a',    { text: `${device.verification_uri}`, href: `${device.verification_uri}`, title: "Click to sign in with GitHub." });
+		this.contentEl.createEl('span', { text: " and enter code " });
+
+		// TODO: probably this is very bad style, but it _does_ work...
+		// TODO: the `title` does not show as nice Obsidian-tooltip...
+		const code = this.contentEl.createEl('code', { text: `${device.user_code}`, title: "Click to copy." });
+		code.addClass("user-device-code");
+		code.onClickEvent(async () => {
+			// TODO: does this even work on mobile?
+			navigator.clipboard.writeText(`${device.user_code}`);
+		});
 
 		this.contentEl.createEl('p', { text: `Waiting for auth response...` });
 	}
